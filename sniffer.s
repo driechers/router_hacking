@@ -3,13 +3,15 @@
 
 ////////////////////////////////////////////////
 // Read a packet from socket at r0 into buffer
-// Then zero out the rest of the buffer
+// Return number of bytes read in r0
 ////////////////////////////////////////////////
 sniff_data:
-    push { r4, r5, lr }
+    push { r4, r5, r11, lr }
 
-// TODO is this loop bad? only sending one packet then hanging
+    mov r11, r0			// store socket fd in r11
+
 filter_loop:
+    mov r0, r11			// raw socket fd
     ldr r1, =buffer
     ldr r2, =len
     mov r3, #0			// flags
@@ -17,6 +19,9 @@ filter_loop:
     mov r5, #0			// addr len
     mov r7, #0x124		// recvfrom system call
     swi 0
+
+    cmp r0, #0
+    blt recvfrom_error
 
     ////////////////////////////////////////////////
     // Crude filter to receive again if source port
@@ -41,19 +46,9 @@ dport:
     ldrb r2, [r1]
     cmp r2, #0x5c
     beq filter_loop		// loop if lsb matches 4444 lsb
-
 break_filter_loop:
-    ldr r1, =buffer
-    ldr r3, =buffer_end		// make math easier
-    add r1, r1, r0		// r1 at buffer + bytes received
-    mov r0, #0			// value to store in rest of buffer
-zero_loop:
-    strb r0, [r1]		// store r0 to buffer
-    add r1, r1, #1
-    cmp r1, r3
-    blt zero_loop		// loop if not at buffer end
 
-    pop { r4, r5, pc }
+    pop { r4, r5, r11, pc }
 
 _start:
     ////////////////////////////////////////////////
@@ -109,9 +104,9 @@ sniff_loop:
     mov r0, r5
     bl sniff_data		// Read packet into buffer
 
+    mov r2, r0			// Only write as much as was read
     mov r0, r6			// Write to TCP socket
     ldr r1, =buffer
-    ldr r2, =len
     mov r7, #4			// write system call
     swi 0
 
@@ -146,6 +141,19 @@ bind_error:
     mov r7, #1			// exit system call
     swi 0
 
+recvfrom_error:
+    push { r0 }
+
+    mov r0, #2			// stderr
+    ldr r1, =recvfrom_err
+    ldr r2, =recvfrom_err_len
+    mov r7, #4			// write system call
+    swi 0
+
+    pop { r0 }
+    mov r7, #1			// exit system call
+    swi 0
+
 .data
 buffer:
     .fill 1600
@@ -156,12 +164,8 @@ sockopt:
     .fill 4
 
 dev:
-    .asciz "eth0"
+    .asciz "br0"
 dev_len = .-dev
-
-wait_msg:
-    .asciz "Waiting for packet\n"
-wait_msg_len = .-wait_msg
 
 conn_err:
     .asciz "failed to connect\n"
@@ -170,6 +174,10 @@ conn_err_len = .-conn_err
 bind_err:
     .asciz "failed to bind to device\n"
 bind_err_len = .-bind_err
+
+recvfrom_err:
+    .asciz "failed to recvfrom\n"
+recvfrom_err_len = .-recvfrom_err
 
 servaddr:
     .ascii "\x02\x00"		// AF_INET
