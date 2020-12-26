@@ -9,3 +9,11 @@ This is just a hello world tcp client. The message being sent is hard coded in t
 sniffer
 ------------------------------------------------------
 This is supposed to be a packet sniffer. The router does not have tcpdump or other sniffing utilities so I created this to try to sniff network traffic using a raw ethernet socket and a tcp client socket to stream captured traffic to a network host. For some reason though it crashes my router and I need to power cycle to recover.
+
+receiver.py
+------------------------------------------------------
+This is the tcp server that uses scapy to process the packets being streamed over TCP.
+
+old\_sniffer
+------------------------------------------------------
+This is supposed to be a packet sniffer. This was the old version that was completely in asm. I've only kept it around because it is fun to look at.
