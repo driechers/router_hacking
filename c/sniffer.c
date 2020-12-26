@@ -14,10 +14,16 @@ typedef unsigned long int uint32;
 #define htons(a) BIGLITTLESWAP16(a)
 #define htonl(a) BIGLITTLESWAP32(a)
 
+struct timespec {
+	long int tv_sec;        /* seconds */
+	long   tv_nsec;       /* nanoseconds */
+};
+
 // ASM hooks
 extern int write(int fd, const char *buf, unsigned int count);
 extern int read(int fd, char *buf, unsigned int count);
 extern void exit(int code);
+extern int nanosleep(const struct timespec *req, struct timespec *rem);
 extern int client_setup(void);
 extern int raw_socket_setup(char *device, unsigned int length);
 
@@ -127,6 +133,10 @@ void _start(void)
 	int tcp_socket = client_setup();
 	int raw_socket = raw_socket_setup("br0", 3);
 
+	struct timespec tim, tim2;
+	tim.tv_sec = 0;
+	tim.tv_nsec = 10000000L; // 10 ms
+
 	print("Starting Sniffer\n");
 
 	while(1) {
@@ -139,6 +149,12 @@ void _start(void)
 			write(tcp_socket, buffer, nbytes);
 			// Send delimeter
 			write(tcp_socket, "-DELIM-", 7);
+		}
+
+		int rval;
+		if(rval=nanosleep(&tim, &tim2) < 0) {
+			error("nanosleep failed\n");
+			exit(rval);
 		}
 	}
 

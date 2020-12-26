@@ -2,6 +2,7 @@
 .global write
 .global read
 .global exit
+.global nanosleep
 .global client_setup
 .global raw_socket_setup
 
@@ -34,6 +35,17 @@ read:
 exit:
     mov r7, #1			// exit system call
     swi 0
+
+////////////////////////////////////////////////
+// exit system call. exit with provided code
+// void exit(int code);
+// int nanosleep(const struct timespec *req, struct timespec *rem);
+////////////////////////////////////////////////
+nanosleep:
+    push { r7, lr }
+    mov r7, #0xa2		// nanosleep system call
+    swi 0
+    pop { r7, pc }
 
 ////////////////////////////////////////////////
 // Create tcp client socket and return fd
